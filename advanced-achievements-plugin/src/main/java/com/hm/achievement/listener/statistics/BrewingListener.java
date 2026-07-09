@@ -19,12 +19,13 @@ import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.category.NormalAchievements;
 import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.CacheManager;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 import com.hm.achievement.utils.InventoryHelper;
 import com.hm.achievement.utils.MaterialHelper;
 
 /**
  * Listener class to deal with Brewing achievements.
- * 
+ *
  * @author Pyves
  *
  */
@@ -36,8 +37,10 @@ public class BrewingListener extends AbstractRateLimitedListener {
 	@Inject
 	public BrewingListener(@Named("main") YamlConfiguration mainConfig, AchievementMap achievementMap,
 			CacheManager cacheManager, AdvancedAchievements advancedAchievements,
-			@Named("lang") YamlConfiguration langConfig, MaterialHelper materialHelper) {
-		super(NormalAchievements.BREWING, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig);
+			@Named("lang") YamlConfiguration langConfig, MaterialHelper materialHelper,
+			FoliaSchedulerAdapter schedulerAdapter) {
+		super(NormalAchievements.BREWING, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig,
+				schedulerAdapter);
 		this.materialHelper = materialHelper;
 	}
 
@@ -64,7 +67,7 @@ public class BrewingListener extends AbstractRateLimitedListener {
 
 	/**
 	 * Determine whether the event corresponds to a brewable potion, i.e. not water.
-	 * 
+	 *
 	 * @param item
 	 * @return true if for any brewable potion
 	 */

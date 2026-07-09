@@ -8,6 +8,8 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import com.hm.achievement.JobsEnableWatcher;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
+import com.hm.achievement.utils.FoliaSchedulerAdapter.ScheduledTask;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
@@ -16,7 +18,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginManager;
-import org.bukkit.scheduler.BukkitTask;
 
 import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.category.Category;
@@ -54,7 +55,8 @@ public class PluginLoader {
 	private final ReloadCommand reloadCommand;
 	private final Set<Reloadable> reloadables;
 	private final AchievementMap achievementMap;
-    private final JobsEnableWatcher jobsEnableWatcher; // <-- add
+	private final FoliaSchedulerAdapter schedulerAdapter;
+	private final JobsEnableWatcher jobsEnableWatcher;
 
 	// Listeners, to monitor various events.
 	private final JoinListener joinListener;
@@ -81,11 +83,11 @@ public class PluginLoader {
 	private final AchievePlayTimeRunnable playTimeRunnable;
 	private final Cleaner cleaner;
 
-	// Bukkit scheduler tasks.
-	private BukkitTask asyncCachedRequestsSenderTask;
-	private BukkitTask playedTimeTask;
-	private BukkitTask distanceTask;
-	private BukkitTask cleanerTask;
+	// Scheduler tasks.
+	private ScheduledTask asyncCachedRequestsSenderTask;
+	private ScheduledTask playedTimeTask;
+	private ScheduledTask distanceTask;
+	private ScheduledTask cleanerTask;
 
 	@Inject
 	public PluginLoader(AdvancedAchievements advancedAchievements, Logger logger, Set<Reloadable> reloadables,
@@ -96,9 +98,9 @@ public class PluginLoader {
 			CommandTabCompleter commandTabCompleter, Set<Category> disabledCategories,
 			@Named("main") YamlConfiguration mainConfig, ConfigurationParser configurationParser,
 			AchieveDistanceRunnable distanceRunnable, AchievePlayTimeRunnable playTimeRunnable, ReloadCommand reloadCommand,
-            AchievementMap achievementMap,
-            JobsEnableWatcher jobsEnableWatcher
-    ) {
+			AchievementMap achievementMap, FoliaSchedulerAdapter schedulerAdapter,
+			JobsEnableWatcher jobsEnableWatcher
+	) {
 		this.advancedAchievements = advancedAchievements;
 		this.logger = logger;
 		this.reloadables = reloadables;
@@ -119,8 +121,9 @@ public class PluginLoader {
 		this.playTimeRunnable = playTimeRunnable;
 		this.reloadCommand = reloadCommand;
 		this.achievementMap = achievementMap;
-        this.jobsEnableWatcher = jobsEnableWatcher;
-    }
+		this.schedulerAdapter = schedulerAdapter;
+		this.jobsEnableWatcher = jobsEnableWatcher;
+	}
 
 	/**
 	 * Loads the plugin.
@@ -185,8 +188,8 @@ public class PluginLoader {
 		pluginManager.registerEvents(listGUIListener, advancedAchievements);
 		pluginManager.registerEvents(playerAdvancedAchievementListener, advancedAchievements);
 		pluginManager.registerEvents(teleportListener, advancedAchievements);
-        pluginManager.registerEvents(jobsEnableWatcher, advancedAchievements);
-    }
+		pluginManager.registerEvents(jobsEnableWatcher, advancedAchievements);
+	}
 
 	/**
 	 * Links the plugin's custom command tab completer and command executor.
@@ -208,13 +211,13 @@ public class PluginLoader {
 		// Schedule a repeating task to group database queries when statistics are modified.
 		if (asyncCachedRequestsSenderTask == null) {
 			long taskPeriod = mainConfig.getBoolean("BungeeMode") ? 40L : 1200L;
-			asyncCachedRequestsSenderTask = Bukkit.getScheduler().runTaskTimerAsynchronously(advancedAchievements,
-					asyncCachedRequestsSender, taskPeriod, taskPeriod);
+			asyncCachedRequestsSenderTask = schedulerAdapter.runTaskTimerAsync(asyncCachedRequestsSender,
+					taskPeriod, taskPeriod);
 		}
 
 		if (cleanerTask == null) {
 			long taskPeriod = mainConfig.getBoolean("BungeeMode") ? 50L : 20000L;
-			cleanerTask = Bukkit.getScheduler().runTaskTimer(advancedAchievements, cleaner, taskPeriod, taskPeriod);
+			cleanerTask = schedulerAdapter.runTaskTimer(cleaner, taskPeriod, taskPeriod);
 		}
 
 		// Schedule a repeating task to monitor played time for each player (not directly related to an event).
@@ -223,7 +226,7 @@ public class PluginLoader {
 		}
 		if (!disabledCategories.contains(NormalAchievements.PLAYEDTIME)) {
 			int configPlaytimeTaskInterval = mainConfig.getInt("PlaytimeTaskInterval");
-			playedTimeTask = Bukkit.getScheduler().runTaskTimer(advancedAchievements, playTimeRunnable,
+			playedTimeTask = schedulerAdapter.runTaskTimer(playTimeRunnable,
 					configPlaytimeTaskInterval * 10L, configPlaytimeTaskInterval * 20L);
 		}
 
@@ -240,7 +243,7 @@ public class PluginLoader {
 				|| !disabledCategories.contains(NormalAchievements.DISTANCELLAMA)
 				|| !disabledCategories.contains(NormalAchievements.DISTANCESNEAKING)) {
 			int configDistanceTaskInterval = mainConfig.getInt("DistanceTaskInterval");
-			distanceTask = Bukkit.getScheduler().runTaskTimer(advancedAchievements, distanceRunnable,
+			distanceTask = schedulerAdapter.runTaskTimer(distanceRunnable,
 					configDistanceTaskInterval * 40L, configDistanceTaskInterval * 20L);
 		}
 	}
@@ -248,7 +251,7 @@ public class PluginLoader {
 	/**
 	 * Registers permissions that depend on the user's configuration file (for MultipleAchievements; for instance for
 	 * stone breaks, achievement.count.breaks.stone will be registered).
-	 * 
+	 *
 	 * Bukkit only allows permissions to be set once, check that the permission node is null to ensure it was not
 	 * previously set, before an /aach reload for example.
 	 */

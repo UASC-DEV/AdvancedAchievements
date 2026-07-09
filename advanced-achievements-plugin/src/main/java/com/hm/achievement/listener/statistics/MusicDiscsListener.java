@@ -16,6 +16,7 @@ import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.category.NormalAchievements;
 import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.CacheManager;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 /**
  * Listener class to deal with MusicDiscs achievements.
@@ -29,8 +30,9 @@ public class MusicDiscsListener extends AbstractRateLimitedListener {
 	@Inject
 	public MusicDiscsListener(@Named("main") YamlConfiguration mainConfig, AchievementMap achievementMap,
 			CacheManager cacheManager, AdvancedAchievements advancedAchievements,
-			@Named("lang") YamlConfiguration langConfig) {
-		super(NormalAchievements.MUSICDISCS, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig);
+			@Named("lang") YamlConfiguration langConfig, FoliaSchedulerAdapter schedulerAdapter) {
+		super(NormalAchievements.MUSICDISCS, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig,
+				schedulerAdapter);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR) // Do NOT set ignoreCancelled to true, deprecated for this event.

@@ -17,11 +17,12 @@ import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.advancement.AchievementAdvancement;
 import com.hm.achievement.advancement.AdvancementManager;
 import com.hm.achievement.db.CacheManager;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 /**
  * Listener class to deal with advancements. This class uses delays processing of tasks to avoid spamming a barely
  * connected player.
- * 
+ *
  * @author Pyves
  *
  */
@@ -30,11 +31,14 @@ public class JoinListener implements Listener {
 
 	private final AdvancedAchievements advancedAchievements;
 	private final CacheManager cacheManager;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 
 	@Inject
-	public JoinListener(AdvancedAchievements advancedAchievements, CacheManager cacheManager) {
+	public JoinListener(AdvancedAchievements advancedAchievements, CacheManager cacheManager,
+			FoliaSchedulerAdapter schedulerAdapter) {
 		this.advancedAchievements = advancedAchievements;
 		this.cacheManager = cacheManager;
+		this.schedulerAdapter = schedulerAdapter;
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -45,24 +49,23 @@ public class JoinListener implements Listener {
 
 	/**
 	 * Schedules an asynchronous task to load the received achievement cache.
-	 * 
+	 *
 	 * @param player
 	 */
 	private void scheduleReceivedCacheLoad(Player player) {
-		Bukkit.getScheduler().runTaskAsynchronously(advancedAchievements,
+		schedulerAdapter.runTaskAsync(
 				() -> cacheManager.getPlayerAchievements(player.getUniqueId()));
-
 	}
 
 	/**
 	 * Schedules a delayed task to award advancements created by Advanced Achievements. This method can be seen as a
 	 * synchronisation to give advancements which were generated after the corresponding achievement was received for a
 	 * given player.
-	 * 
+	 *
 	 * @param player
 	 */
 	private void scheduleAwardAdvancements(Player player) {
-		Bukkit.getScheduler().scheduleSyncDelayedTask(advancedAchievements, () -> {
+		schedulerAdapter.runTaskForEntity(player, () -> {
 			// Check that the player is still connected.
 			if (!player.isOnline()) {
 				return;

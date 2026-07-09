@@ -30,6 +30,7 @@ import com.hm.achievement.db.CacheManager;
 import com.hm.achievement.domain.Achievement;
 import com.hm.achievement.domain.Achievement.AchievementBuilder;
 import com.hm.achievement.utils.FancyMessageSender;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 import com.hm.achievement.utils.PlayerAdvancedAchievementEvent;
 
 /**
@@ -53,6 +54,8 @@ class PlayerAdvancedAchievementListenerTest {
 	private AbstractDatabaseManager abstractDatabaseManager;
 	@Mock
 	private AdvancedAchievements plugin;
+	@Mock
+	private FoliaSchedulerAdapter schedulerAdapter;
 
 	private PlayerAdvancedAchievementListener underTest;
 
@@ -66,8 +69,9 @@ class PlayerAdvancedAchievementListenerTest {
 		YamlConfiguration langConfig = YamlConfiguration
 				.loadConfiguration(new InputStreamReader(getClass().getResourceAsStream("/lang.yml")));
 		underTest = new PlayerAdvancedAchievementListener(mainConfig, langConfig, mock(Logger.class),
-				new StringBuilder(PLUGIN_HEADER), new CacheManager(plugin, abstractDatabaseManager), plugin, null,
-				achievementMap, abstractDatabaseManager, null, new FancyMessageSender(16));
+				new StringBuilder(PLUGIN_HEADER), new CacheManager(plugin, abstractDatabaseManager, schedulerAdapter),
+				plugin, null, achievementMap, abstractDatabaseManager, null, new FancyMessageSender(16),
+				schedulerAdapter);
 		underTest.extractConfigurationParameters();
 		when(player.getUniqueId()).thenReturn(PLAYER_UUID);
 		when(player.getName()).thenReturn("DarkPyves");

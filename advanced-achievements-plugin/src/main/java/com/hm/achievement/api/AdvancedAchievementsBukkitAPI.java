@@ -11,7 +11,6 @@ import javax.inject.Singleton;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import com.hm.achievement.AdvancedAchievements;
@@ -109,12 +108,8 @@ public class AdvancedAchievementsBukkitAPI implements AdvancedAchievementsAPI {
 	public long getStatisticForNormalCategory(UUID player, NormalAchievements category) {
 		validateNotNull(player, "Player");
 		validateNotNull(category, "Category");
-		// Underlying cached statistic structures are only populated by the main server thread.
-		if (Bukkit.isPrimaryThread()) {
-			return cacheManager.getAndIncrementStatisticAmount(category, player, 0);
-		} else {
-			return databaseManager.getNormalAchievementAmount(player, category);
-		}
+		// Cache uses ConcurrentHashMap and computeIfAbsent; safe from any thread.
+		return cacheManager.getAndIncrementStatisticAmount(category, player, 0);
 	}
 
 	@Override
@@ -122,12 +117,8 @@ public class AdvancedAchievementsBukkitAPI implements AdvancedAchievementsAPI {
 		validateNotNull(player, "Player");
 		validateNotNull(category, "Category");
 		validateNotEmpty(subcategory, "Sub-category");
-		// Underlying cached statistic structures are only populated by the main server thread.
-		if (Bukkit.isPrimaryThread()) {
-			return cacheManager.getAndIncrementStatisticAmount(category, subcategory, player, 0);
-		} else {
-			return databaseManager.getMultipleAchievementAmount(player, category, subcategory);
-		}
+		// Cache uses ConcurrentHashMap and computeIfAbsent; safe from any thread.
+		return cacheManager.getAndIncrementStatisticAmount(category, subcategory, player, 0);
 	}
 
 	@Override

@@ -4,7 +4,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -19,11 +18,12 @@ import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.AbstractDatabaseManager;
 import com.hm.achievement.db.CacheManager;
 import com.hm.achievement.db.data.ConnectionInformation;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 /**
  * Listener class to deal with Connections achievements. This class uses delays processing of tasks to avoid spamming a
  * barely connected player.
- * 
+ *
  * @author Pyves
  *
  */
@@ -32,13 +32,16 @@ public class ConnectionsListener extends AbstractListener {
 
 	private final AdvancedAchievements advancedAchievements;
 	private final AbstractDatabaseManager databaseManager;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 
 	@Inject
 	public ConnectionsListener(@Named("main") YamlConfiguration mainConfig, AchievementMap achievementMap,
-			CacheManager cacheManager, AdvancedAchievements advancedAchievements, AbstractDatabaseManager databaseManager) {
+			CacheManager cacheManager, AdvancedAchievements advancedAchievements, AbstractDatabaseManager databaseManager,
+			FoliaSchedulerAdapter schedulerAdapter) {
 		super(NormalAchievements.CONNECTIONS, mainConfig, achievementMap, cacheManager);
 		this.advancedAchievements = advancedAchievements;
 		this.databaseManager = databaseManager;
+		this.schedulerAdapter = schedulerAdapter;
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -58,15 +61,15 @@ public class ConnectionsListener extends AbstractListener {
 
 	/**
 	 * Schedules a delayed task to deal with Connection achievements.
-	 * 
+	 *
 	 * @param player
 	 */
 	private void scheduleAwardConnection(Player player) {
-		Bukkit.getScheduler().runTaskAsynchronously(advancedAchievements, () -> {
+		schedulerAdapter.runTaskAsync(() -> {
 			ConnectionInformation connectionInformation = databaseManager.getConnectionInformation(player.getUniqueId());
 			if (!ConnectionInformation.today().equals(connectionInformation.getDate())) {
-				// Switch to main server thread as Bukkit APIs aren't thread-safe and shouldn't be used in async tasks.
-				Bukkit.getScheduler().scheduleSyncDelayedTask(advancedAchievements, () -> {
+				// Switch to entity's region thread as Bukkit APIs require correct thread context.
+				schedulerAdapter.runTaskForEntity(player, () -> {
 					if (player.isOnline() && shouldIncreaseBeTakenIntoAccount(player, category)) {
 						long updatedConnectionCount = connectionInformation.getCount() + 1;
 						databaseManager.updateConnectionInformation(player.getUniqueId(), updatedConnectionCount);

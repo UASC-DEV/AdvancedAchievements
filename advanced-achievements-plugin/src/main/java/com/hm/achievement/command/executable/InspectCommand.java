@@ -2,12 +2,12 @@ package com.hm.achievement.command.executable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -28,6 +28,7 @@ import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.AbstractDatabaseManager;
 import com.hm.achievement.db.data.AwardedDBAchievement;
 import com.hm.achievement.domain.Achievement;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 import com.hm.achievement.utils.StringHelper;
 
 /**
@@ -45,6 +46,7 @@ public class InspectCommand extends AbstractCommand {
 	private final AdvancedAchievements advancedAchievements;
 	private final AbstractDatabaseManager databaseManager;
 	private final AchievementMap achievementMap;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 
 	private final Map<String, Long> lastCached;
 	private final Map<String, SupplierCommandPagination> cachedPaginations;
@@ -52,14 +54,15 @@ public class InspectCommand extends AbstractCommand {
 	@Inject
 	public InspectCommand(@Named("main") YamlConfiguration mainConfig, @Named("lang") YamlConfiguration langConfig,
 			StringBuilder pluginHeader, AdvancedAchievements advancedAchievements, AbstractDatabaseManager databaseManager,
-			AchievementMap achievementMap) {
+			AchievementMap achievementMap, FoliaSchedulerAdapter schedulerAdapter) {
 		super(mainConfig, langConfig, pluginHeader);
 		this.advancedAchievements = advancedAchievements;
 		this.databaseManager = databaseManager;
 		this.achievementMap = achievementMap;
+		this.schedulerAdapter = schedulerAdapter;
 
-		this.lastCached = new HashMap<>();
-		this.cachedPaginations = new HashMap<>();
+		this.lastCached = new ConcurrentHashMap<>();
+		this.cachedPaginations = new ConcurrentHashMap<>();
 	}
 
 	@Override
@@ -85,7 +88,7 @@ public class InspectCommand extends AbstractCommand {
 		}
 		int page = getPage(args);
 
-		advancedAchievements.getServer().getScheduler().runTaskAsynchronously(advancedAchievements, () -> {
+		schedulerAdapter.runTaskAsync(() -> {
 			// Cleaning the cache & caching desired pagination
 			cleanUpCache();
 			checkAndCache(achievement.getName());

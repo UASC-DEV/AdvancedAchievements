@@ -31,8 +31,9 @@ import com.hm.achievement.domain.Achievement;
 import com.hm.achievement.gui.GUIItems;
 import com.hm.achievement.gui.OrderedCategory;
 import com.hm.achievement.lifecycle.Reloadable;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
+import com.hm.achievement.utils.FoliaSchedulerAdapter.ScheduledTask;
 import com.hm.achievement.utils.StringHelper;
-import org.bukkit.scheduler.BukkitTask;
 
 @SuppressWarnings("deprecation")
 @Singleton
@@ -45,6 +46,7 @@ public class AdvancementManager implements Reloadable {
 	private final YamlConfiguration mainConfig;
 	private final GUIItems guiItems;
 	private final AdvancedAchievements advancedAchievements;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 	private final Logger logger;
 	private final Set<Category> disabledCategories;
 	private final AchievementMap achievementMap;
@@ -54,7 +56,7 @@ public class AdvancementManager implements Reloadable {
 	private String configRootAdvancementTitle;
 	private String configBackgroundTexture;
 	private int generatedAdvancements;
-	private BukkitTask generationTask;
+	private ScheduledTask generationTask;
 	private static final int DEFAULT_PER_TICK = 10;
 
 	private static final class LoadRequest {
@@ -71,11 +73,13 @@ public class AdvancementManager implements Reloadable {
 							  GUIItems guiItems,
 							  AchievementMap achievementMap,
 							  AdvancedAchievements advancedAchievements,
+							  FoliaSchedulerAdapter schedulerAdapter,
 							  Logger logger,
 							  Set<Category> disabledCategories) {
 		this.mainConfig = mainConfig;
 		this.guiItems = guiItems;
 		this.advancedAchievements = advancedAchievements;
+		this.schedulerAdapter = schedulerAdapter;
 		this.logger = logger;
 		this.disabledCategories = disabledCategories;
 		this.achievementMap = achievementMap;
@@ -227,7 +231,7 @@ public class AdvancementManager implements Reloadable {
 		final int perTick = Math.max(1, mainConfig.getInt("AdvancementGenerationPerTick", DEFAULT_PER_TICK));
 		final int[] index = {0};
 
-		generationTask = Bukkit.getScheduler().runTaskTimer(advancedAchievements, () -> {
+		generationTask = schedulerAdapter.runTaskTimer(() -> {
 			int processed = 0;
 			while (processed < perTick && index[0] < work.size()) {
 				work.get(index[0]++).run();

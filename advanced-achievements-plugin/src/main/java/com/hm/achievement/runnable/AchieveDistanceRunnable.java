@@ -1,9 +1,9 @@
 package com.hm.achievement.runnable;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -33,7 +33,7 @@ import com.hm.achievement.utils.StatisticIncreaseHandler;
 @Singleton
 public class AchieveDistanceRunnable extends StatisticIncreaseHandler implements Cleanable, Runnable {
 
-	private final Map<UUID, Location> playerLocations = new HashMap<>();
+	private final Map<UUID, Location> playerLocations = new ConcurrentHashMap<>();
 	private final Set<Category> disabledCategories;
 
 	private boolean configIgnoreVerticalDistance;

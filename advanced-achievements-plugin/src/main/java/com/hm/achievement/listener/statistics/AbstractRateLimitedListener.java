@@ -1,9 +1,9 @@
 package com.hm.achievement.listener.statistics;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
@@ -17,6 +17,7 @@ import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.CacheManager;
 import com.hm.achievement.domain.Achievement;
 import com.hm.achievement.lifecycle.Cleanable;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -28,9 +29,10 @@ import net.md_5.bungee.api.chat.TextComponent;
  */
 public class AbstractRateLimitedListener extends AbstractListener implements Cleanable {
 
-	private final Map<Integer, Map<UUID, Long>> slotsToPlayersLastActionTimes = new HashMap<>();
+	private final Map<Integer, Map<UUID, Long>> slotsToPlayersLastActionTimes = new ConcurrentHashMap<>();
 	private final AdvancedAchievements advancedAchievements;
 	private final YamlConfiguration langConfig;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 
 	private int categoryCooldown;
 	private long hardestCategoryThreshold;
@@ -39,10 +41,12 @@ public class AbstractRateLimitedListener extends AbstractListener implements Cle
 	private String langStatisticCooldown;
 
 	AbstractRateLimitedListener(Category category, YamlConfiguration mainConfig, AchievementMap achievementMap,
-			CacheManager cacheManager, AdvancedAchievements advancedAchievements, YamlConfiguration langConfig) {
+			CacheManager cacheManager, AdvancedAchievements advancedAchievements, YamlConfiguration langConfig,
+			FoliaSchedulerAdapter schedulerAdapter) {
 		super(category, mainConfig, achievementMap, cacheManager);
 		this.advancedAchievements = advancedAchievements;
 		this.langConfig = langConfig;
+		this.schedulerAdapter = schedulerAdapter;
 	}
 
 	@Override
@@ -92,14 +96,15 @@ public class AbstractRateLimitedListener extends AbstractListener implements Cle
 			return false;
 		}
 
-		Map<UUID, Long> playersLastActionTimes = slotsToPlayersLastActionTimes.computeIfAbsent(slotNumber, HashMap::new);
+		Map<UUID, Long> playersLastActionTimes = slotsToPlayersLastActionTimes.computeIfAbsent(slotNumber,
+				k -> new ConcurrentHashMap<>());
 		long currentTimeMillis = System.currentTimeMillis();
 		long timeToWait = playersLastActionTimes.getOrDefault(uuid, 0L) + categoryCooldown - currentTimeMillis;
 		if (timeToWait > 0) {
 			if (configCooldownActionBar) {
 				if (category == NormalAchievements.MUSICDISCS) {
 					// Display message with a delay to avoid it being overwritten by disc name message.
-					Bukkit.getScheduler().scheduleSyncDelayedTask(advancedAchievements,
+					schedulerAdapter.runTaskForEntity(player,
 							() -> displayActionBarMessage(player, timeToWait), 20);
 				} else {
 					displayActionBarMessage(player, timeToWait);

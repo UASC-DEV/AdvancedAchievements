@@ -13,10 +13,11 @@ import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.category.NormalAchievements;
 import com.hm.achievement.config.AchievementMap;
 import com.hm.achievement.db.CacheManager;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 /**
  * Listener class to deal with Beds achievements.
- * 
+ *
  * @author Pyves
  *
  */
@@ -26,8 +27,9 @@ public class BedsListener extends AbstractRateLimitedListener {
 	@Inject
 	public BedsListener(@Named("main") YamlConfiguration mainConfig, AchievementMap achievementMap,
 			CacheManager cacheManager, AdvancedAchievements advancedAchievements,
-			@Named("lang") YamlConfiguration langConfig) {
-		super(NormalAchievements.BEDS, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig);
+			@Named("lang") YamlConfiguration langConfig, FoliaSchedulerAdapter schedulerAdapter) {
+		super(NormalAchievements.BEDS, mainConfig, achievementMap, cacheManager, advancedAchievements, langConfig,
+				schedulerAdapter);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

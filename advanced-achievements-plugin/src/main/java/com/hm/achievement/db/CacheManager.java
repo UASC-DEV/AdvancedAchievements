@@ -19,6 +19,7 @@ import com.hm.achievement.AdvancedAchievements;
 import com.hm.achievement.category.MultipleAchievements;
 import com.hm.achievement.category.NormalAchievements;
 import com.hm.achievement.lifecycle.Cleanable;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 
 /**
  * Class used to provide a cache wrapper for various database statistics, in order to reduce load of database and enable
@@ -32,6 +33,7 @@ public class CacheManager implements Cleanable {
 
 	private final AdvancedAchievements advancedAchievements;
 	private final AbstractDatabaseManager databaseManager;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 	// Statistics of the different players for normal achievements; keys in the inner maps correspond to UUIDs.
 	private final Map<NormalAchievements, Map<UUID, CachedStatistic>> normalAchievementsToPlayerStatistics;
 	// Statistics of the different players for multiple achievements; keys in the inner maps correspond to concatenated
@@ -41,9 +43,11 @@ public class CacheManager implements Cleanable {
 	private final Map<UUID, Set<String>> receivedAchievementsCache;
 
 	@Inject
-	public CacheManager(AdvancedAchievements advancedAchievements, AbstractDatabaseManager databaseManager) {
+	public CacheManager(AdvancedAchievements advancedAchievements, AbstractDatabaseManager databaseManager,
+			FoliaSchedulerAdapter schedulerAdapter) {
 		this.advancedAchievements = advancedAchievements;
 		this.databaseManager = databaseManager;
+		this.schedulerAdapter = schedulerAdapter;
 		normalAchievementsToPlayerStatistics = new EnumMap<>(NormalAchievements.class);
 		multipleAchievementsToPlayerStatistics = new EnumMap<>(MultipleAchievements.class);
 		receivedAchievementsCache = new ConcurrentHashMap<>();
@@ -97,8 +101,8 @@ public class CacheManager implements Cleanable {
 			UUID uuid = keyUuidMapper.apply(key);
 			CachedStatistic statistic = entry.getValue();
 			if (statistic.didPlayerDisconnect() && statistic.isDatabaseConsistent()) {
-				// Player was disconnected at some point in the recent past delegate cleaning to the main server thread.
-				Bukkit.getScheduler().callSyncMethod(advancedAchievements, () -> {
+				// Player was disconnected at some point in the recent past; delegate cleaning to a sync thread.
+				schedulerAdapter.callSyncMethod(() -> {
 					// Check again whether statistic has been written to the database. This is necessary to cover
 					// cases where the player may have reconnected in the meantime.
 					if (statistic.isDatabaseConsistent()) {
@@ -143,11 +147,8 @@ public class CacheManager implements Cleanable {
 	 */
 	public long getAndIncrementStatisticAmount(NormalAchievements category, UUID player, int value) {
 		Map<UUID, CachedStatistic> cache = getHashMap(category);
-		CachedStatistic statistic = cache.get(player);
-		if (statistic == null) {
-			statistic = new CachedStatistic(databaseManager.getNormalAchievementAmount(player, category), true);
-			cache.put(player, statistic);
-		}
+		CachedStatistic statistic = cache.computeIfAbsent(player,
+				k -> new CachedStatistic(databaseManager.getNormalAchievementAmount(k, category), true));
 		if (value != 0) {
 			statistic.setValue(statistic.getValue() + value);
 		}
@@ -167,12 +168,9 @@ public class CacheManager implements Cleanable {
 	public long getAndIncrementStatisticAmount(MultipleAchievements category, String subcategory, UUID player, int value) {
 		SubcategoryUUID key = new SubcategoryUUID(subcategory, player);
 		Map<SubcategoryUUID, CachedStatistic> cache = getHashMap(category);
-		CachedStatistic statistic = cache.get(key);
-		if (statistic == null) {
-			statistic = new CachedStatistic(databaseManager.getMultipleAchievementAmount(player, category,
-					key.getSubcategory()), true);
-			cache.put(key, statistic);
-		}
+		CachedStatistic statistic = cache.computeIfAbsent(key,
+				k -> new CachedStatistic(databaseManager.getMultipleAchievementAmount(player, category,
+						k.getSubcategory()), true));
 		if (value != 0) {
 			statistic.setValue(statistic.getValue() + value);
 		}
@@ -224,7 +222,7 @@ public class CacheManager implements Cleanable {
 
 	/**
 	 * Resets a player's statistics to 0.
-	 * 
+	 *
 	 * @param uuid
 	 * @param categoriesWithSubcategories
 	 */

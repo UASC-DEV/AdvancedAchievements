@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 import javax.inject.Singleton;
 
 import com.hm.achievement.advancement.AdvancementManager;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -27,13 +28,14 @@ import dagger.Component;
  * Bukkit instantiates an instance of this class and calls the onEnable and onDisable methods when relevant. This class
  * is the root of the dependency graph constructed with Dagger and is used to bind the instance created by Bukkit with
  * the rest of the plugin modules. It delegates the actual enabling and disabling operations to the PluginLoader class.
- * 
+ *
  * @author LucidAPs
  */
 public class AdvancedAchievements extends JavaPlugin {
 
 	private PluginLoader pluginLoader;
 	private AdvancedAchievementsAPI advancedAchievementsAPI;
+	private FoliaSchedulerAdapter schedulerAdapter;
 
 	@Override
 	public void onEnable() {
@@ -45,6 +47,7 @@ public class AdvancedAchievements extends JavaPlugin {
 
 		pluginLoader = advancedAchievementsComponent.pluginLoader();
 		advancedAchievementsAPI = advancedAchievementsComponent.advancedAchievementsBukkitAPI();
+		schedulerAdapter = advancedAchievementsComponent.schedulerAdapter();
 
 		try {
 			pluginLoader.loadAdvancedAchievements();
@@ -57,14 +60,14 @@ public class AdvancedAchievements extends JavaPlugin {
 
 		var advancementManager = advancedAchievementsComponent.advancementManager();
 
-// Generate after load, one tick later (and NOT force regenerate)
-		Bukkit.getScheduler().runTaskLater(this, () -> {
+		// Generate after load, one tick later (and NOT force regenerate)
+		schedulerAdapter.runTaskLater(() -> {
 			advancementManager.generateAdvancementsIncremental(false, null, null);
 		}, 1L);
 
-// Optional but recommended: seed root on join (see next section)
+		// Optional but recommended: seed root on join (see next section)
 		Bukkit.getPluginManager().registerEvents(
-				new com.hm.achievement.advancement.AdvancementTabListener(this, advancementManager),
+				new com.hm.achievement.advancement.AdvancementTabListener(schedulerAdapter, advancementManager),
 				this
 		);
 
@@ -98,6 +101,8 @@ interface AdvancedAchievementsComponent {
 	AdvancedAchievementsBukkitAPI advancedAchievementsBukkitAPI();
 
 	AdvancementManager advancementManager();
+
+	FoliaSchedulerAdapter schedulerAdapter();
 
 	@Component.Builder
 	interface Builder {

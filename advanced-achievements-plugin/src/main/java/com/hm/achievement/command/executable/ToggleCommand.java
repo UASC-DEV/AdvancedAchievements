@@ -1,11 +1,10 @@
 package com.hm.achievement.command.executable;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -26,8 +25,8 @@ import org.bukkit.entity.Player;
 public class ToggleCommand extends AbstractCommand {
 
 	// Indicates whether a player has used toggle since last server restart.
-	private final Set<UUID> toggledPlayers = new HashSet<>();
-	private final Map<String, Set<UUID>> typesToToggledPlayers = new HashMap<>();
+	private final Set<UUID> toggledPlayers = ConcurrentHashMap.newKeySet();
+	private final Map<String, Set<UUID>> typesToToggledPlayers = new ConcurrentHashMap<>();
 
 	private boolean configNotifyOtherPlayers;
 	private String langToggleDisplayed;
@@ -70,7 +69,8 @@ public class ToggleCommand extends AbstractCommand {
 		Player player = (Player) sender;
 		Set<UUID> toggledPlayersForType = toggledPlayers;
 		if (args.length > 1) {
-			toggledPlayersForType = typesToToggledPlayers.computeIfAbsent(args[1], t -> new HashSet<>());
+			toggledPlayersForType = typesToToggledPlayers.computeIfAbsent(args[1],
+					t -> ConcurrentHashMap.newKeySet());
 		}
 
 		if (toggledPlayersForType.contains(player.getUniqueId())) {

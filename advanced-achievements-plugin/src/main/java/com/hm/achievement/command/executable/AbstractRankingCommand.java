@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.math.NumberUtils;
@@ -51,7 +52,7 @@ public abstract class AbstractRankingCommand extends AbstractCommand {
 	// Used for caching.
 	private Map<String, Integer> cachedSortedRankings;
 	private List<Integer> cachedAchievementCounts;
-	private long lastCacheUpdate = 0L;
+	private volatile long lastCacheUpdate = 0L;
 
 	AbstractRankingCommand(YamlConfiguration mainConfig, YamlConfiguration langConfig, StringBuilder pluginHeader,
 			Logger logger, String languageKey, AbstractDatabaseManager databaseManager, SoundPlayer soundPlayer) {
@@ -81,7 +82,8 @@ public abstract class AbstractRankingCommand extends AbstractCommand {
 	public void onExecute(CommandSender sender, String[] args) {
 		if (System.currentTimeMillis() - lastCacheUpdate >= CACHE_EXPIRATION_DELAY) {
 			// Update cached data structures.
-			cachedSortedRankings = databaseManager.getTopList(getRankingStartTime());
+			cachedSortedRankings = new ConcurrentHashMap<>(
+					databaseManager.getTopList(getRankingStartTime()));
 			cachedAchievementCounts = new ArrayList<>(cachedSortedRankings.values());
 			lastCacheUpdate = System.currentTimeMillis();
 		}

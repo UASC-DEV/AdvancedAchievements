@@ -49,6 +49,7 @@ import com.hm.achievement.domain.Reward;
 import com.hm.achievement.lifecycle.Reloadable;
 import com.hm.achievement.utils.ColorHelper;
 import com.hm.achievement.utils.FancyMessageSender;
+import com.hm.achievement.utils.FoliaSchedulerAdapter;
 import com.hm.achievement.utils.PlayerAdvancedAchievementEvent;
 import com.hm.achievement.utils.StringHelper;
 
@@ -96,6 +97,7 @@ public class PlayerAdvancedAchievementListener implements Listener, Reloadable {
 	private final AbstractDatabaseManager databaseManager;
 	private final ToggleCommand toggleCommand;
 	private final FancyMessageSender fancyMessageSender;
+	private final FoliaSchedulerAdapter schedulerAdapter;
 
 	private String configFireworkStyle;
 	private boolean configFirework;
@@ -120,7 +122,7 @@ public class PlayerAdvancedAchievementListener implements Listener, Reloadable {
 			@Named("lang") YamlConfiguration langConfig, Logger logger, StringBuilder pluginHeader,
 			CacheManager cacheManager, AdvancedAchievements advancedAchievements, RewardParser rewardParser,
 			AchievementMap achievementMap, AbstractDatabaseManager databaseManager, ToggleCommand toggleCommand,
-			FancyMessageSender fancyMessageSender) {
+			FancyMessageSender fancyMessageSender, FoliaSchedulerAdapter schedulerAdapter) {
 		this.mainConfig = mainConfig;
 		this.langConfig = langConfig;
 		this.logger = logger;
@@ -132,6 +134,7 @@ public class PlayerAdvancedAchievementListener implements Listener, Reloadable {
 		this.databaseManager = databaseManager;
 		this.toggleCommand = toggleCommand;
 		this.fancyMessageSender = fancyMessageSender;
+		this.schedulerAdapter = schedulerAdapter;
 	}
 
 	@Override
@@ -237,8 +240,8 @@ public class PlayerAdvancedAchievementListener implements Listener, Reloadable {
 			String message = StringUtils.replaceOnce(langBossBarProgress, "AMOUNT", receivedAmount + "/" + totalAmount);
 			BossBar bossBar = Bukkit.getServer().createBossBar(message, barColor, BarStyle.SOLID);
 			bossBar.setProgress(progress);
-			Bukkit.getScheduler().scheduleSyncDelayedTask(advancedAchievements, () -> bossBar.addPlayer(player), 110);
-			Bukkit.getScheduler().scheduleSyncDelayedTask(advancedAchievements, () -> bossBar.removePlayer(player), 240);
+			schedulerAdapter.runTaskForEntity(player, () -> bossBar.addPlayer(player), 110);
+			schedulerAdapter.runTaskForEntity(player, () -> bossBar.removePlayer(player), 240);
 		}
 	}
 
